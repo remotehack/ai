@@ -18,27 +18,35 @@ if (!('ai' in window)) {
 
         console.log(session)
 
-        let pending = false;
+        let current;
+
+        let pending;
 
         async function requestLoop() {
             if (!pending) return setTimeout(requestLoop, 100)
+            console.log("request: ", pending)
+            const value = pending;
+
+            pending = false// ready for more
 
             input.classList.add('requesting')
+
             try {
-                const stream = await session.promptStreaming(pending)
+                current = new AbortController()
+
+                const stream = await session.promptStreaming(value, { signal: current.signal })
                 for await (const chunk of stream) {
                     console.log(chunk);
                     output.innerText = chunk;
                 }
 
+                current = null;
 
             } catch (e) {
                 errorOutput.innerText = `err: ${e.message}`
             }
 
             input.classList.remove('requesting')
-
-            pending = false
 
             return setTimeout(requestLoop, 1000)
         }
@@ -54,7 +62,7 @@ if (!('ai' in window)) {
             timer = setTimeout(() => {
                 input.classList.remove('debounced');
                 pending = input.value;
-
+                current?.abort()
             }, 500);
         }
 
